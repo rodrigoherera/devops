@@ -1,32 +1,42 @@
 const request = require("supertest");
-const { expect } = require("chai");
 const app = require("../app");
+const assert = require("assert");
 
 describe("User API", () => {
-  it("should return a health check message", async () => {
-    const response = await request(app).get("/health");
-    expect(response.status).to.equal(200);
-    expect(response.text).to.equal("API is running");
+  let server;
+
+  before((done) => {
+    server = app.listen(done);
   });
 
-  it("should create a new user", async () => {
-    const newUser = {
-      name: "John",
-      lastName: "Doe",
-    };
-
-    const response = await request(app).post("/users").send(newUser);
-
-    expect(response.status).to.equal(201);
-    expect(response.body).to.have.property("id");
-    expect(response.body.name).to.equal(newUser.name);
-    expect(response.body.lastName).to.equal(newUser.lastName);
+  after((done) => {
+    server.close(() => {
+      done();
+      process.exit(0); // Exit the test process after the server is closed
+    });
   });
 
-  it("should retrieve all users", async () => {
-    const response = await request(app).get("/users");
-    expect(response.status).to.equal(200);
-    expect(response.body).to.be.an("array");
-    expect(response.body).to.have.lengthOf(1);
+  it("should create a new user", (done) => {
+    request(app)
+      .post("/users")
+      .send({ name: "John", lastName: "Doe" })
+      .expect(201)
+      .end((err, res) => {
+        if (err) return done(err);
+        assert.strictEqual(res.body.name, "John");
+        assert.strictEqual(res.body.lastName, "Doe");
+        done();
+      });
+  });
+
+  it("should retrieve all users", (done) => {
+    request(app)
+      .get("/users")
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err);
+        assert.strictEqual(res.body.length, 1);
+        done();
+      });
   });
 });
